@@ -68,6 +68,7 @@ public class ModuleManager {
         register(new ChatPreview());
         register(new PlayerAffiliations());
         register(new ExpOverlay());
+        register(new Translation());
 
     }
 

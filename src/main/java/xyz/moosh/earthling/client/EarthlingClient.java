@@ -81,6 +81,7 @@ public class EarthlingClient implements ClientModInitializer {
         widgetManager.init();
         commandManager.init();
 
+        serviceManager.init();
         UpdateCheckUtil.init();
 
         // configManager.load() MUST come after all groups have been registered.

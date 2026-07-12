@@ -55,7 +55,10 @@ public class MiningWidget extends Widget {
     private static final int PADDING    = 4;
     private static final int ROW_HEIGHT = 10;
     private static final int HEADER_H   = 12;
+    private static final int HINT_H     = 10;
     private static final int WIDTH      = 140;
+
+    private static final String HINT_TEXT = "/ert miningreset to clear";
 
     /** How many ticks to wait for the drop to arrive before giving up. */
     private static final int CHECK_TICKS = 8;
@@ -87,7 +90,9 @@ public class MiningWidget extends Widget {
 
     @Override public int getWidth()  { return WIDTH; }
     @Override public int getHeight() {
-        return HEADER_H + Math.max(1, counts.size()) * ROW_HEIGHT + PADDING;
+        int base = HEADER_H + Math.max(1, counts.size()) * ROW_HEIGHT + PADDING;
+        // Extra row for the reset hint when session has data
+        return counts.isEmpty() ? base : base + HINT_H;
     }
 
     @Override
@@ -118,7 +123,6 @@ public class MiningWidget extends Widget {
     @Override
     public void render(GuiGraphics g, float tickDelta) {
         int w = getWidth();
-        int h = getHeight();
 
         RenderHelper.drawText(g, "Mining Session", PADDING, 2, headerColor.get());
 
@@ -135,6 +139,22 @@ public class MiningWidget extends Widget {
                     w - PADDING - RenderHelper.textWidth(countStr), y, 0xFFFFD700);
             y += ROW_HEIGHT;
         }
+
+        // Reset hint
+        RenderHelper.drawText(g, HINT_TEXT, PADDING, y + 1, 0xFF555555);
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────
+
+    /** Clears all session ore counts and pending drop checks. */
+    public void resetSession() {
+        counts.clear();
+        pendingChecks.clear();
+    }
+
+    /** Returns true if no ores have been counted this session. */
+    public boolean isSessionEmpty() {
+        return counts.isEmpty();
     }
 
     // ── Internal ──────────────────────────────────────────────────────────
@@ -182,11 +202,6 @@ public class MiningWidget extends Widget {
             if (!stack.isEmpty() && stack.getItem() == item) total += stack.getCount();
         }
         return total;
-    }
-
-    private void resetSession() {
-        counts.clear();
-        pendingChecks.clear();
     }
 
     // ── Inner types ───────────────────────────────────────────────────────

@@ -91,8 +91,19 @@ public class EventBus {
                         post(new HudRenderEvent(guiGraphics,
                                 deltaTracker.getGameTimeDeltaTicks())));
 
-        ClientReceiveMessageEvents.GAME.register((message, overlay) ->
-                post(new ChatReceiveEvent(message, overlay)));
+// 1. Intercept Player Chat (Standard chat)
+        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.ALLOW_CHAT.register(
+                (message, signedMessage, sender, params, receptionTimestamp) -> {
+                    ChatReceiveEvent event = post(new ChatReceiveEvent(message, false));
+                    return !event.isCancelled();
+                });
+
+// 2. Intercept Game/System Chat (EarthMC uses this for Global, Nation, etc.)
+        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.ALLOW_GAME.register(
+                (message, overlay) -> {
+                    ChatReceiveEvent event = post(new ChatReceiveEvent(message, overlay));
+                    return !event.isCancelled();
+                });
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             String address = client.getCurrentServer() != null

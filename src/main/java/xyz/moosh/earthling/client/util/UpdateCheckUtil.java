@@ -22,78 +22,73 @@ package xyz.moosh.earthling.client.util;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import xyz.moosh.earthling.client.EarthlingClient;
 import xyz.moosh.earthling.client.event.impl.ServerChangeEvent;
-import xyz.moosh.earthling.client.service.EarthMCService;
 import xyz.moosh.earthling.client.service.NotificationService;
 
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 
 public class UpdateCheckUtil {
 
-    // The version variable you requested
-    public static final String MOD_VERSION = "dev-1";
-
-    // The URL variable you can change
+    public static final String MOD_VERSION = "1.0.0";
     public static String updateUrl = "https://github.com/Mooshlol304/Earthling/releases/latest";
+    private static final String JSON_METADATA_URL = "https://raw.githubusercontent.com/Mooshlol304/Earthling/1.21.11/Update.json";
 
-    // The raw JSON link
-    private static final String UPDATE_JSON_URL = "https://raw.githubusercontent.com/Mooshlol304/Earthling/1.21.11/Update.json";
-
-    /**
-     * Listen for server changes and check for updates if on EarthMC.
-     */
     public static void init() {
         EarthlingClient.getInstance().getEventBus().subscribe(ServerChangeEvent.class, event -> {
-            // Give the ServiceManager a tick to update the connection state
-            Minecraft.getInstance().execute(() -> {
-                EarthMCService emc = EarthlingClient.getInstance().getServiceManager().get(EarthMCService.class);
-
-                if (emc != null && emc.isEarthMC()) {
-                    runUpdateCheck();
-                }
-            });
+            Minecraft.getInstance().execute(UpdateCheckUtil::performUpdateCheck);
         });
     }
 
-    private static void runUpdateCheck() {
+    private static void performUpdateCheck() {
         CompletableFuture.runAsync(() -> {
             try {
-                URL url = new URL(UPDATE_JSON_URL);
-                InputStreamReader reader = new InputStreamReader(url.openStream());
-                JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+                URL url = URI.create(JSON_METADATA_URL).toURL();
+                try (InputStreamReader reader = new InputStreamReader(url.openStream())) {
+                    JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+                    String remoteVersion = json.get("version").getAsString();
 
-                String latestVersion = json.get("version").getAsString();
+                    if (json.has("url")) {
+                        updateUrl = json.get("url").getAsString();
+                    }
 
-                // If the JSON contains a specific download URL, we update our variable
-                if (json.has("url")) {
-                    updateUrl = json.get("url").getAsString();
-                }
-
-                if (!MOD_VERSION.equalsIgnoreCase(latestVersion)) {
-                    triggerNotification(latestVersion);
+                    if (!MOD_VERSION.equalsIgnoreCase(remoteVersion)) {
+                        sendCleanNotification(remoteVersion);
+                    }
                 }
             } catch (Exception e) {
-                EarthlingClient.LOGGER.error("[Earthling] Failed to fetch update metadata: " + e.getMessage());
+                EarthlingClient.LOGGER.error("[Earthling] Update check failed: {}", e.getMessage());
             }
         });
     }
 
-    private static void triggerNotification(String latest) {
+    private static void sendCleanNotification(String remoteVersion) {
         Minecraft.getInstance().execute(() -> {
             NotificationService notifier = EarthlingClient.getInstance().getServiceManager().get(NotificationService.class);
 
             if (notifier != null) {
-                notifier.warn("A new version of Earthling is available (" + latest + ")");
                 notifier.playPing();
             }
 
-            ChatUtil.sendClickable(
-                    "[Earthling] A new version of Earthling is available at " + updateUrl,
-                    updateUrl
-            );
+            // --- THE FIX IS HERE ---
+            // In 1.21, we use ClickEvent.OpenUrl and HoverEvent.ShowText records
+
+            MutableComponent message = Component.literal("§8[§6Earthling§8] §7A new version (§6" + remoteVersion + "§7) is available! ")
+                    .append(Component.literal("§b§n[Download Here]")
+                            .withStyle(style -> style
+                                    // Instantiate the OpenUrl record with a URI
+                                    .withClickEvent(new ClickEvent.OpenUrl(URI.create(updateUrl)))
+                                    // Instantiate the ShowText record with a Component
+                                    .withHoverEvent(new HoverEvent.ShowText(Component.literal("§7Click to open GitHub")))));
+
+            ChatUtil.sendMessage(message);
         });
     }
 }

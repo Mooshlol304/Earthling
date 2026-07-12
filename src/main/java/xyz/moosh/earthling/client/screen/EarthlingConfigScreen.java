@@ -20,32 +20,33 @@
 package xyz.moosh.earthling.client.screen;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import xyz.moosh.earthling.client.EarthlingClient;
-import xyz.moosh.earthling.client.module.ChatPreview;
-import xyz.moosh.earthling.client.module.ExpOverlay;
-import xyz.moosh.earthling.client.module.PlayerAffiliations;
-import xyz.moosh.earthling.client.render.RenderHelper;
+import xyz.moosh.earthling.client.config.ConfigOption;
+import xyz.moosh.earthling.client.manager.ModuleManager;
+import xyz.moosh.earthling.client.module.*;
+import xyz.moosh.earthling.client.module.Module; // Explicitly import your Module class
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class EarthlingConfigScreen extends Screen {
-    private static final int MAX_MSG_CHARS  = 120;
-    private static final int SCROLL_H       = 2; // Thinner, cleaner look
-    private static final int SCROLL_PAD     = 6;
-
-    private static final int COLOR_BG       = 0xCC0F0F14;
+    private static final int COLOR_BG       = 0xEE0F0F14;
     private static final int COLOR_TITLE    = 0xFF38BDF8;
     private static final int COLOR_SUBTITLE = 0xFF888899;
+    private static final int MAX_MSG_CHARS  = 120;
 
     private final Screen parent;
     private EditBox townlessMsgField;
 
-    // Fractional Layout State
-    private int startY, inputX, inputY, inputW, scrollY;
-    private boolean draggingScroll = false;
+    private double scrollAmount = 0;
+    private int totalContentHeight = 0;
+    private final List<ScrollableElement> scrollableElements = new ArrayList<>();
 
     public EarthlingConfigScreen(Screen parent) {
         super(Component.literal("Earthling"));
@@ -54,140 +55,139 @@ public class EarthlingConfigScreen extends Screen {
 
     @Override
     protected void init() {
+        this.scrollableElements.clear();
+        this.clearWidgets();
+
         int cx = width / 2;
+        int listWidth = (int) (width * 0.6);
+        int leftAlign = cx - (listWidth / 2);
+        int toggleX = cx + (listWidth / 2) - 60;
+        int currentY = 10;
+        int itemHeight = 30;
 
-        // Dynamic Scaling (Fractional)
-        this.startY  = (int) (height * 0.28);
-        int spacing  = (int) (height * 0.075);
-        int btnW     = 60;
-        int btnH     = 20;
+        // --- FETCH MODULES ---
+        ModuleManager mm = EarthlingClient.getInstance().getModuleManager();
+        ChatPreview preview = mm.get(ChatPreview.class);
+        PlayerAffiliations affiliations = mm.get(PlayerAffiliations.class);
+        ExpOverlay expOverlay = mm.get(ExpOverlay.class);
+        Translation translation = mm.get(Translation.class);
 
-        ChatPreview       preview      = EarthlingClient.getInstance().getModuleManager().get(ChatPreview.class);
-        PlayerAffiliations affiliations = EarthlingClient.getInstance().getModuleManager().get(PlayerAffiliations.class);
-        ExpOverlay         expOverlay   = EarthlingClient.getInstance().getModuleManager().get(ExpOverlay.class);
+        // 1. Module Toggles
+        if (preview != null) {
+            addModuleRow("Chat Preview", preview, leftAlign, toggleX, currentY);
+            currentY += itemHeight;
+        }
 
-        // Toggle Buttons (Aligned to 65% of screen width)
-        int toggleX = (int)(width * 0.65) - (btnW / 2);
+        if (affiliations != null) {
+            addModuleRow("Player Affiliations", affiliations, leftAlign, toggleX, currentY);
+            currentY += itemHeight;
+        }
 
-        addRenderableWidget(Button.builder(Component.literal(preview.isEnabled() ? "§aTRUE" : "§cFALSE"),
-                        btn -> { preview.toggle(); btn.setMessage(Component.literal(preview.isEnabled() ? "§aTRUE" : "§cFALSE")); })
-                .bounds(toggleX, startY, btnW, btnH).build());
+        if (expOverlay != null) {
+            addModuleRow("Exp Overlay", expOverlay, leftAlign, toggleX, currentY);
+            currentY += itemHeight;
+        }
 
-        addRenderableWidget(Button.builder(Component.literal(affiliations.isEnabled() ? "§aTRUE" : "§cFALSE"),
-                        btn -> { affiliations.toggle(); btn.setMessage(Component.literal(affiliations.isEnabled() ? "§aTRUE" : "§cFALSE")); })
-                .bounds(toggleX, startY + spacing, btnW, btnH).build());
+        if (translation != null) {
+            addModuleRow("Translation System", translation, leftAlign, toggleX, currentY);
+            currentY += itemHeight;
 
-        addRenderableWidget(Button.builder(Component.literal(expOverlay.isEnabled() ? "§aTRUE" : "§cFALSE"),
-                        btn -> { expOverlay.toggle(); btn.setMessage(Component.literal(expOverlay.isEnabled() ? "§aTRUE" : "§cFALSE")); })
-                .bounds(toggleX, startY + (spacing * 2), btnW, btnH).build());
+            // 2. Translation Language Selector (Inside Translation check)
+            final TranslationLanguage[] languages = TranslationLanguage.values();
+            ConfigOption<TranslationLanguage> langOpt = translation.getConfig().get("target_lang");
 
-        // Responsive Input Field
-        this.inputW = (int) (width * 0.55); // 55% of screen width
-        this.inputX = cx - (inputW / 2);
-        this.inputY = startY + (spacing * 3) + 15;
+            Button langBtn = Button.builder(Component.literal("§f" + langOpt.get().toString()), btn -> {
+                int next = (langOpt.get().ordinal() + 1) % languages.length;
+                langOpt.set(languages[next]);
+                btn.setMessage(Component.literal("§f" + languages[next].toString()));
+            }).bounds(toggleX - 40, currentY, 100, 20).build();
 
-        this.townlessMsgField = new EditBox(font, inputX, inputY, inputW, btnH, Component.literal(""));
+            scrollableElements.add(new ScrollableElement("Target Language", leftAlign, currentY, langBtn));
+            currentY += itemHeight + 10;
+        }
+
+        // 3. Townless Message Input
+        currentY += 15;
+        this.townlessMsgField = new EditBox(font, leftAlign, currentY + 15, listWidth, 20, Component.literal(""));
         this.townlessMsgField.setMaxLength(MAX_MSG_CHARS);
         this.townlessMsgField.setValue(EarthlingClient.getInstance().getTownlessMessage().get());
-        addRenderableWidget(this.townlessMsgField);
 
-        this.scrollY = inputY + btnH + SCROLL_PAD;
+        scrollableElements.add(new ScrollableElement("Invite Message:", leftAlign, currentY, townlessMsgField));
+        currentY += 60;
 
-        // Navigation
-        addRenderableWidget(Button.builder(Component.literal("⬜ Widget HUD"),
+        // 4. Navigation
+        Button widgetBtn = Button.builder(Component.literal("⬜ Widget HUD"),
                         btn -> minecraft.setScreen(new WidgetHudScreen(this)))
-                .bounds(cx - 60, scrollY + 25, 120, 20).build());
+                .bounds(cx - 60, currentY, 120, 20).build();
+        scrollableElements.add(new ScrollableElement(null, 0, currentY, widgetBtn));
+        currentY += 40;
 
-        addRenderableWidget(Button.builder(Component.literal("Done"),
-                        btn -> onClose())
-                .bounds(cx - 40, height - (int)(height * 0.1), 80, 20).build());
+        this.totalContentHeight = currentY;
+
+        // Register all widgets
+        scrollableElements.forEach(e -> {
+            if (e.widget != null) addRenderableWidget(e.widget);
+        });
+
+        // Fixed footer button
+        addRenderableWidget(Button.builder(Component.literal("Done"), btn -> onClose())
+                .bounds(cx - 40, height - 30, 80, 20).build());
     }
 
-// ── Slider Navigation Logic ───────────────────────────────────────────
+    private void addModuleRow(String label, Module module, int lx, int tx, int y) {
+        Button b = Button.builder(Component.literal(module.isEnabled() ? "§aTRUE" : "§cFALSE"), btn -> {
+            module.setEnabled(!module.isEnabled());
+            btn.setMessage(Component.literal(module.isEnabled() ? "§aTRUE" : "§cFALSE"));
+        }).bounds(tx, y, 60, 20).build();
 
-    private void seekToMouse(double mouseX) {
-        String val = townlessMsgField.getValue();
-        if (val.isEmpty()) return;
-
-        // Calculate the target character index based on mouse X
-        float pct = (float) (mouseX - inputX) / (float) inputW;
-        pct = Math.max(0, Math.min(1, pct));
-        int targetPos = (int) (pct * val.length());
-
-        // FIX: Moving both the cursor and the highlight position to the SAME
-        // spot prevents the blue selection box from appearing.
-        townlessMsgField.setCursorPosition(targetPos);
-        townlessMsgField.setHighlightPos(targetPos);
-    }
-
-    private boolean isOverScroll(double mx, double my) {
-        // Slightly taller hit-box for easier clicking
-        return mx >= inputX && mx <= inputX + inputW && my >= scrollY - 5 && my <= scrollY + SCROLL_H + 5;
+        scrollableElements.add(new ScrollableElement(label, lx, y, b));
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean hasCaptured) {
-        if (event.button() == 0 && isOverScroll(event.x(), event.y())) {
-            this.draggingScroll = true;
-            // Focus the field so user can see the cursor blinking
-            this.setFocused(townlessMsgField);
-            seekToMouse(event.x());
-            return true; // IMPORTANT: Consuming this prevents the EditBox from starting its own selection logic
-        }
-        return super.mouseClicked(event, hasCaptured);
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        this.scrollAmount = Mth.clamp(scrollAmount - (verticalAmount * 20), 0, Math.max(0, totalContentHeight - (height / 2)));
+        return true;
     }
-
-    @Override
-    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
-        if (this.draggingScroll && event.button() == 0) {
-            seekToMouse(event.x());
-            return true;
-        }
-        return super.mouseDragged(event, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseReleased(MouseButtonEvent event) {
-        this.draggingScroll = false;
-        return super.mouseReleased(event);
-    }
-
-    // ── Updated Scrubber Render ───────────────────────────────────────────
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float tickDelta) {
         g.fill(0, 0, width, height, COLOR_BG);
 
-        // Proportional Headers
-        g.drawCenteredString(font, "Earthling", width / 2, (int)(height * 0.1), COLOR_TITLE);
-        g.drawCenteredString(font, "Quality of Life for EarthMC", width / 2, (int)(height * 0.15), COLOR_SUBTITLE);
+        g.drawCenteredString(font, "Earthling", width / 2, 15, COLOR_TITLE);
+        g.drawCenteredString(font, "Quality of Life for EarthMC", width / 2, 28, COLOR_SUBTITLE);
 
-        // Labels (using fractional positions)
-        int labelX = (int)(width * 0.35);
-        int spacing = (int) (height * 0.075);
-        g.drawString(font, "Chat Preview",       labelX, startY + 6, 0xFFCCCCCC);
-        g.drawString(font, "Player Affiliations", labelX, startY + spacing + 6, 0xFFCCCCCC);
-        g.drawString(font, "Exp Overlay",         labelX, startY + (spacing * 2) + 6, 0xFFCCCCCC);
+        int viewTop = 50;
+        int viewBottom = height - 40;
 
-        g.drawString(font, "Invite Message:", inputX, inputY - 12, 0xFFAAAAAA);
+        g.enableScissor(0, viewTop, width, viewBottom);
 
-        // --- NEW WHITE SCRUBBER BAR ---
-        // 1. The Track (Very subtle grey line)
-        g.fill(inputX, scrollY, inputX + inputW, scrollY + SCROLL_H, 0x44FFFFFF);
+        for (ScrollableElement e : scrollableElements) {
+            int renderedY = (int) (viewTop + e.relY - scrollAmount);
 
-        // 2. The Scrubber (Bright White thin bar)
-        int total = townlessMsgField.getValue().length();
-        float progress = total == 0 ? 0 : (float) townlessMsgField.getCursorPosition() / total;
+            if (renderedY > viewTop - 30 && renderedY < viewBottom + 10) {
+                if (e.label != null) {
+                    g.drawString(font, e.label, e.lx, renderedY + 6, 0xFFCCCCCC);
+                }
+                if (e.widget != null) {
+                    e.widget.setY(renderedY);
+                    e.widget.visible = true;
+                }
+            } else {
+                if (e.widget != null) e.widget.visible = false;
+            }
+        }
 
-        int scrubberW = 4; // Thin vertical bar
-        int tx = inputX + (int)(progress * (inputW - scrubberW));
+        g.disableScissor();
 
-        // Draw a small white vertical rectangle as the scrubber
-        g.fill(tx, scrollY - 2, tx + scrubberW, scrollY + SCROLL_H + 2, 0xFFFFFFFF);
+        if (totalContentHeight > (viewBottom - viewTop)) {
+            int scrollbarX = width - 6;
+            g.fill(scrollbarX, viewTop, width - 2, viewBottom, 0x22FFFFFF);
 
-        // Character counter
-        String counter = total + " / " + MAX_MSG_CHARS;
-        g.drawString(font, counter, inputX + inputW - font.width(counter), scrollY + 8, 0xFF666666);
+            double viewRatio = (double)(viewBottom - viewTop) / totalContentHeight;
+            int barHeight = (int) ((viewBottom - viewTop) * viewRatio);
+            int barPos = (int) (viewTop + (scrollAmount * viewRatio));
+            g.fill(scrollbarX, barPos, width - 2, barPos + barHeight, 0xAA38BDF8);
+        }
 
         super.render(g, mouseX, mouseY, tickDelta);
     }
@@ -198,5 +198,17 @@ public class EarthlingConfigScreen extends Screen {
         EarthlingClient.getInstance().getConfigManager().save();
         minecraft.setScreen(parent);
     }
+
+    private static class ScrollableElement {
+        String label;
+        int lx, relY;
+        AbstractWidget widget;
+
+        public ScrollableElement(String label, int lx, int relY, AbstractWidget widget) {
+            this.label = label;
+            this.lx = lx;
+            this.relY = relY;
+            this.widget = widget;
+        }
+    }
 }
-//Hey @username, welcome! Need a head start? We offer free gear, housing and help! Interested? Just type '/t join @town'
