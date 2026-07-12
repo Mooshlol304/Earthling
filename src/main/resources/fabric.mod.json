@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "earthling",
+  "version": "${version}",
+  "name": "Earthling",
+  "description": "An extension mod to help with the quality of life on EarthMC!",
+  "authors": ["MOOSH"],
+  "contact": {},
+  "license": "LGPL-3.0",
+  "icon": "assets/earthling/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "xyz.moosh.earthling.client.EarthlingDataGenerator"
+    ],
+    "client": [
+      "xyz.moosh.earthling.client.EarthlingClient"
+    ],
+    "main": [
+      "xyz.moosh.earthling.Earthling"
+    ],
+    "modmenu": ["xyz.moosh.earthling.client.compat.EarthlingModMenuApi"]
+  },
+  "mixins": [
+    "earthling.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}

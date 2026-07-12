@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+
+# Build output
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Local runtime
+run/
+
+# Local libraries
+libs/
+
+# OS files
+.DS_Store
+Thumbs.db
