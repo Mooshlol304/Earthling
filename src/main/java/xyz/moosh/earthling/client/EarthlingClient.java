@@ -26,6 +26,7 @@ import xyz.moosh.earthling.client.config.ConfigGroup;
 import xyz.moosh.earthling.client.config.ConfigOption;
 import xyz.moosh.earthling.client.event.EventBus;
 import xyz.moosh.earthling.client.manager.*;
+import xyz.moosh.earthling.client.util.MooshLibUtil;
 
 public class EarthlingClient implements ClientModInitializer {
 
@@ -47,6 +48,9 @@ public class EarthlingClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         instance = this;
+
+        MooshLibUtil.validateDependency();
+
         LOGGER.info("Initialising Earthling...");
 
         eventBus       = new EventBus();
