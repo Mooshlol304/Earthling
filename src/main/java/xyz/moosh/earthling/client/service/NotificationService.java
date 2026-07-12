@@ -92,7 +92,6 @@ public class NotificationService extends Service {
      * @param subtitle toast subtitle/body
      */
     public void toast(String title, String subtitle) {
-        // TODO Phase 6: render a proper Earthling-styled toast overlay
         // For now, fall back to a chat message so it isn't silently dropped
         notify("§l" + title + " §r— " + subtitle, Level.INFO);
     }

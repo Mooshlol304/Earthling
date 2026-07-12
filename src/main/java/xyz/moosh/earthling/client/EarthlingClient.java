@@ -27,6 +27,7 @@ import xyz.moosh.earthling.client.config.ConfigOption;
 import xyz.moosh.earthling.client.event.EventBus;
 import xyz.moosh.earthling.client.manager.*;
 import xyz.moosh.earthling.client.util.MooshLibUtil;
+import xyz.moosh.earthling.client.util.UpdateCheckUtil;
 
 public class EarthlingClient implements ClientModInitializer {
 
@@ -79,6 +80,8 @@ public class EarthlingClient implements ClientModInitializer {
         moduleManager.init();
         widgetManager.init();
         commandManager.init();
+
+        UpdateCheckUtil.init();
 
         // configManager.load() MUST come after all groups have been registered.
         configManager.load();
