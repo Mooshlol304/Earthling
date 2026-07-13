@@ -66,7 +66,7 @@ public abstract class Module implements IModule {
 
     // The 'enabled' toggle is always the first option in every module's config
     private final ConfigOption<Boolean> enabledOption;
-    private boolean enabled = false;
+    private boolean enabled = true;
 
     protected Module(String id, String name, Category category) {
         this.id       = id;
