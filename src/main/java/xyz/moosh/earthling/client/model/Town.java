@@ -30,11 +30,11 @@ public class Town {
     public double       gold;
     public int          numResidents;
     public int          numChunks;
-    public boolean      isOpen;            // town accepts new residents without invite
-    public boolean      canOutsidersSpawn; // outsiders can /t spawn here
+    public boolean      isOpen;
+    public boolean      canOutsidersSpawn;
     public boolean      isPeaceful;
     public boolean      isPublic;
-    public boolean      isCapital;         // True if the town is the nation's capital
+    public boolean      isCapital;
     public List<String> residents;
     public long         fetchedAt;
 

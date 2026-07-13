@@ -135,16 +135,11 @@ public class TownlessCommand implements ICommand {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
-        // 1. Send the invite immediately
         mc.player.connection.sendCommand("t add " + target);
 
-        // 2. Start a background thread to wait before messaging
         new Thread(() -> {
             try {
-                // 500ms delay is usually enough to bypass EMC command spam filter
                 Thread.sleep(500);
-
-                // Return to the main thread to send the next command safely
                 mc.execute(() -> {
                     if (mc.player != null) {
                         String raw = EarthlingClient.getInstance().getTownlessMessage().get();
@@ -153,7 +148,8 @@ public class TownlessCommand implements ICommand {
                     }
                 });
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Thread.currentThread().interrupt();
+                EarthlingClient.LOGGER.warn("[TownlessCommand] Invite thread interrupted for {}", target);
             }
         }).start();
     }

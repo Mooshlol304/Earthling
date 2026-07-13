@@ -28,11 +28,11 @@ public class PlayerInfo {
     public String   uuid;
     public String   town;
     public String   nation;
-    public String   discordId;   // may be null
+    public String   discordId;
     public double   balance;
     public boolean  isOnline;
     public long     lastOnline;
-    public long     registeredAt; // Added field
+    public long     registeredAt;
     public Location mapLocation;
     public long     fetchedAt;
 

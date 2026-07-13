@@ -1,3 +1,22 @@
+/*
+ * Earthling
+ * Copyright (c) 2025 Moosh
+ *
+ * Earthling is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * Earthling is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with Earthling. If not, see
+ * <https://www.gnu.org/licenses/>.
+ */
+
 package xyz.moosh.earthling.mixin;
 
 import net.minecraft.client.Minecraft;
@@ -26,10 +45,8 @@ public interface ExperienceTextMixin {
         ExpOverlay mod = EarthlingClient.getInstance().getModuleManager().get(ExpOverlay.class);
 
         if (mod != null && mod.isEnabled() && Minecraft.getInstance().player != null) {
-            // Get just the points we have earned in the current level bar
+            // Show XP points earned toward the current level, e.g. "20 (+200)"
             int progressXp = ExperienceUtils.getXpProgressPoints(Minecraft.getInstance().player);
-
-            // Format: "Level (+Points)" -> e.g., "20 (+200)"
             return Component.literal(level + " (+" + progressXp + ")");
         }
 

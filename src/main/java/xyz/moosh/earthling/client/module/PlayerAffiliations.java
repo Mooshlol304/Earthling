@@ -29,7 +29,7 @@ import java.util.Set;
 
 public class PlayerAffiliations extends Module {
 
-    // Keep track of who we are currently fetching to prevent API spam
+    // Prevents spamming getPlayer() for a name already in flight
     private final Set<String> pendingRequests = new HashSet<>();
 
     public PlayerAffiliations() {
@@ -38,13 +38,11 @@ public class PlayerAffiliations extends Module {
 
     @Override
     public void onEnable() {
-        // Correctly subscribing to the event
         eventBus.subscribe(RenderNameTagEvent.class, this::renderAffiliation);
     }
 
     @Override
     public void onDisable() {
-        // Cleanup if necessary
         pendingRequests.clear();
     }
 
@@ -52,31 +50,21 @@ public class PlayerAffiliations extends Module {
         var service = EarthlingClient.getInstance().getServiceManager().getPlayerService();
         String cleanName = event.getPlayerName().replaceAll("§.", "");
 
-        // 1. Check the cache
         var info = service.getCachedPlayer(cleanName);
 
-        // 2. Logic: If null, fetch it once and then stop
         if (info == null) {
             if (!pendingRequests.contains(cleanName)) {
                 pendingRequests.add(cleanName);
-
-                // Trigger async fetch
-                service.getPlayer(cleanName).thenAccept(data -> {
-                    pendingRequests.remove(cleanName);
-                });
+                service.getPlayer(cleanName).thenAccept(data -> pendingRequests.remove(cleanName));
             }
-            // Return early: we have nothing to render yet
             return;
         }
 
-// 3. Render logic (updated with §3 for the darker town color)
         if (info.town != null && !info.town.isEmpty()) {
             String result;
             if (info.nation != null && !info.nation.isEmpty()) {
-                // §6 = Gold, §7 = Gray, §3 = Dark Aqua
                 result = "§7[§6" + info.nation + "§7|§3" + info.town + "§7]";
             } else {
-                // §3 = Dark Aqua
                 result = "§7[§3" + info.town + "§7]";
             }
             event.addAboveName(Component.literal(result));

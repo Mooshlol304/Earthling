@@ -26,158 +26,67 @@ import xyz.moosh.earthling.client.model.ChatChannel;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 public class ChatTrackerService extends Service {
 
-
     private ChatChannel current = ChatChannel.GLOBAL;
-
     private boolean party = false;
 
-
-    private final Pattern channelPattern =
-            Pattern.compile("([A-Za-z]+)\\s*\\(write\\)");
-
+    // Matches e.g. "Nation (write)" from EarthMC's channel-switch confirmation
+    private final Pattern channelPattern = Pattern.compile("([A-Za-z]+)\\s*\\(write\\)");
 
     private EventBus.EventListener<ChatReceiveEvent> listener;
-
-
 
     public ChatTrackerService(EventBus eventBus) {
         super("chat_tracker", eventBus);
     }
 
-
-
     @Override
     public void init() {
-
-        listener = eventBus.subscribe(
-                ChatReceiveEvent.class,
-                event -> track(event.getMessage().getString())
-        );
+        listener = eventBus.subscribe(ChatReceiveEvent.class, event -> track(event.getMessage().getString()));
     }
-
-
 
     @Override
     public void shutdown() {
-
-        if(listener != null) {
-
-            eventBus.unsubscribe(
-                    ChatReceiveEvent.class,
-                    listener
-            );
-
-        }
+        if (listener != null) eventBus.unsubscribe(ChatReceiveEvent.class, listener);
     }
-
-
-
 
     private void track(String message) {
-
-        if(message == null || message.isEmpty())
-            return;
-
-
-        System.out.println("[Earthling ChatTracker] " + message);
-
+        if (message == null || message.isEmpty()) return;
 
         /*
-         * Example:
-         * You are currently in Nation (write)
+         * "You are currently in Nation (write)"
+         * Fired by EarthMC when you rejoin a channel or reconnect.
          */
-        if(message.contains("You are currently in")) {
-
+        if (message.contains("You are currently in")) {
             Matcher matcher = channelPattern.matcher(message);
-
-            if(matcher.find()) {
-
-                String channel = matcher.group(1);
-
-                current = ChatChannel.get(channel);
-
-                System.out.println(
-                        "[Earthling ChatTracker] Switched to: "
-                                + current.getName()
-                );
+            if (matcher.find()) {
+                current = ChatChannel.get(matcher.group(1));
             }
         }
-
-
 
         /*
-         * Example:
-         * » You have joined the channel: Nation!
+         * "» You have joined the channel: Nation!"
+         * Fired on an explicit /ch switch.
          */
-        if(message.contains("You have joined the channel")) {
-
-
+        if (message.contains("You have joined the channel")) {
             int index = message.indexOf(":");
-
-
-            if(index != -1) {
-
-                String channel =
-                        message.substring(index + 1)
-                                .replace(".", "")
-                                .replace("!", "")
-                                .trim();
-
-
+            if (index != -1) {
+                String channel = message.substring(index + 1)
+                        .replace(".", "").replace("!", "").trim();
                 current = ChatChannel.get(channel);
-
-
-                System.out.println(
-                        "[Earthling ChatTracker] Joined: "
-                                + current.getName()
-                );
             }
         }
 
-
-
-        if(message.contains(
-                "automatically delivered to the Party chat"
-        )) {
-
+        if (message.contains("automatically delivered to the Party chat")) {
             party = true;
-
         }
 
-
-
-        if(message.contains(
-                "no longer be automatically delivered"
-        )
-                ||
-                message.contains(
-                        "left that party"
-                )) {
-
+        if (message.contains("no longer be automatically delivered")
+                || message.contains("left that party")) {
             party = false;
-
         }
     }
 
-
-
-
-
-    public ChatChannel getChannel() {
-
-        return current;
-
-    }
-
-
-
-
-    public boolean isParty() {
-
-        return party;
-
-    }
+    public ChatChannel getChannel() { return current; }
+    public boolean isParty()       { return party; }
 }

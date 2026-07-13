@@ -35,10 +35,7 @@ import xyz.moosh.earthling.client.event.impl.RenderNameTagEvent;
 @Mixin(AvatarRenderer.class)
 public abstract class PlayerInfoMixin {
 
-    @Inject(
-            method = "submitNameTag",
-            at = @At("TAIL")
-    )
+    @Inject(method = "submitNameTag", at = @At("TAIL"))
     private void ert$injectNameDisplay(
             AvatarRenderState state,
             PoseStack poseStack,
@@ -48,24 +45,19 @@ public abstract class PlayerInfoMixin {
 
         if (state.nameTag == null) return;
 
-        // Post event to get labels
         RenderNameTagEvent event = new RenderNameTagEvent(state.nameTag.getString());
         EarthlingClient.getInstance().getEventBus().post(event);
 
         if (event.getExtraLines().isEmpty()) return;
 
-        // Render setup
-        // We inject at TAIL, so the original name is already rendered.
-        // We push a new pose to draw our own.
+        // Draw extra lines above the vanilla name, stacking 0.25 units per line.
         poseStack.pushPose();
-
-        // Adjust Y height (0.25 is slightly above the vanilla name)
         poseStack.translate(0.0D, 0.25D, 0.0D);
 
         for (Component line : event.getExtraLines()) {
             collector.submitNameTag(
                     poseStack,
-                    state.nameTagAttachment, // Use the existing attachment point
+                    state.nameTagAttachment,
                     0,
                     line,
                     !state.isDiscrete,
@@ -73,8 +65,6 @@ public abstract class PlayerInfoMixin {
                     state.distanceToCameraSq,
                     camera
             );
-
-            // Move up for the next line
             poseStack.translate(0.0D, 0.25D, 0.0D);
         }
 

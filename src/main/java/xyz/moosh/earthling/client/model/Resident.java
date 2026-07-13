@@ -25,11 +25,11 @@ public class Resident {
     public String  uuid;
     public String  town;
     public String  nation;
-    public String  discordId;  // linked Discord user ID, null if not linked
+    public String  discordId;
     public double  balance;
     public boolean isOnline;
     public long    lastOnline;
-    public long    registeredAt; // Added field
+    public long    registeredAt;
     public long    fetchedAt;
 
     public Resident() {}

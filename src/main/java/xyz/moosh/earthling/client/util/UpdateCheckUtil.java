@@ -72,20 +72,13 @@ public class UpdateCheckUtil {
     private static void sendCleanNotification(String remoteVersion) {
         Minecraft.getInstance().execute(() -> {
             NotificationService notifier = EarthlingClient.getInstance().getServiceManager().get(NotificationService.class);
+            if (notifier != null) notifier.playPing();
 
-            if (notifier != null) {
-                notifier.playPing();
-            }
-
-            // --- THE FIX IS HERE ---
-            // In 1.21, we use ClickEvent.OpenUrl and HoverEvent.ShowText records
-
-            MutableComponent message = Component.literal("§8[§6Earthling§8] §7A new version (§6" + remoteVersion + "§7) is available! ")
+            MutableComponent message = Component.literal(
+                            "§8[§6Earthling§8] §7A new version (§6" + remoteVersion + "§7) is available! ")
                     .append(Component.literal("§b§n[Download Here]")
                             .withStyle(style -> style
-                                    // Instantiate the OpenUrl record with a URI
                                     .withClickEvent(new ClickEvent.OpenUrl(URI.create(updateUrl)))
-                                    // Instantiate the ShowText record with a Component
                                     .withHoverEvent(new HoverEvent.ShowText(Component.literal("§7Click to open GitHub")))));
 
             ChatUtil.sendMessage(message);

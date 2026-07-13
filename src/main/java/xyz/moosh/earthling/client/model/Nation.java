@@ -32,7 +32,7 @@ public class Nation {
     public List<String> towns;
     public List<String> allies;
     public List<String> enemies;
-    public long         fetchedAt; // epoch ms
+    public long         fetchedAt;
 
     public Nation() {}
 }

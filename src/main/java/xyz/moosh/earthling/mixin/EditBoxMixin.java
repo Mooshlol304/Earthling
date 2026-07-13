@@ -39,10 +39,7 @@ public abstract class EditBoxMixin {
     @Unique
     private static ChatChannel earthling$lastChannel = ChatChannel.GLOBAL;
 
-    @Inject(
-            method = "renderWidget",
-            at = @At("TAIL")
-    )
+    @Inject(method = "renderWidget", at = @At("TAIL"))
     private void earthling$chatPreview(
             GuiGraphics graphics,
             int mouseX,
@@ -52,64 +49,34 @@ public abstract class EditBoxMixin {
     ) {
         Minecraft mc = Minecraft.getInstance();
 
-        // 1. Logic Check: Only render if we are currently inside the Chat Screen.
-        // This prevents the "Sending to: [Global]" text from appearing in your Config menu.
-        if (!(mc.screen instanceof ChatScreen)) {
-            return;
-        }
+        // Only render inside ChatScreen — we don't want this bleeding into config screens.
+        if (!(mc.screen instanceof ChatScreen)) return;
 
-        // 2. Module Check: Is the Chat Preview enabled?
-        ChatPreview module = EarthlingClient.getInstance()
-                .getModuleManager()
-                .get(ChatPreview.class);
-
-        if (module == null || !module.isEnabled()) {
-            return;
-        }
+        ChatPreview module = EarthlingClient.getInstance().getModuleManager().get(ChatPreview.class);
+        if (module == null || !module.isEnabled()) return;
 
         EditBox box = (EditBox) (Object) this;
 
-        // 3. Service Check: Get the current channel from the tracker
         ChatTrackerService tracker = EarthlingClient.getInstance()
                 .getServiceManager()
                 .getChatTracker();
 
         if (tracker != null) {
             ChatChannel current = tracker.getChannel();
-            if (current != null) {
-                earthling$lastChannel = current;
-            }
+            if (current != null) earthling$lastChannel = current;
         }
 
         ChatChannel channel = earthling$lastChannel != null ? earthling$lastChannel : ChatChannel.GLOBAL;
 
-        // 4. Formatting logic
         String name = channel.getName();
-        if (name == null || name.isEmpty()) {
-            name = "global";
-        }
-
-        // Proper capitalization
+        if (name == null || name.isEmpty()) name = "global";
         name = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
 
-        // Append party indicator if active
-        if (tracker != null && tracker.isParty()) {
-            name += " (Party)";
-        }
+        if (tracker != null && tracker.isParty()) name += " (Party)";
 
         int colour = channel.getColour();
-        if (colour == 0) {
-            colour = 0xFFFFFF; // Default to white if no colour provided
-        }
+        if (colour == 0) colour = 0xFFFFFF;
 
-        // 5. Render the string exactly above the box
-        graphics.drawString(
-                mc.font,
-                "Sending to: [" + name + "]",
-                box.getX(),
-                box.getY() - 12,
-                colour,
-                true // withShadow
-        );
+        graphics.drawString(mc.font, "Sending to: [" + name + "]", box.getX(), box.getY() - 12, colour, true);
     }
 }

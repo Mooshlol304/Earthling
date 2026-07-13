@@ -19,7 +19,6 @@
 
 package xyz.moosh.earthling.client.model;
 
-/** A 3D world coordinate. Pure data — no Minecraft imports. */
 public class Location {
     public final double x;
     public final double y;
@@ -36,7 +35,7 @@ public class Location {
 
     public double distanceTo(Location other) {
         double dx = this.x - other.x, dz = this.z - other.z;
-        return Math.sqrt(dx * dx + dz * dz); // 2D surface distance
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     @Override public String toString() {
