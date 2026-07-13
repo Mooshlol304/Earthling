@@ -46,6 +46,8 @@ public class WidgetManager {
     private final Map<String, Widget>   byId    = new LinkedHashMap<>();
     private final Map<Class<?>, Widget> byType  = new HashMap<>();
 
+    private boolean featuresActive = false;
+
     public WidgetManager(EventBus eventBus, ConfigManager configManager) {
         this.eventBus      = eventBus;
         this.configManager = configManager;
@@ -57,6 +59,15 @@ public class WidgetManager {
         eventBus.subscribe(TickEvent.class,       this::onTick);
         EarthlingClient.LOGGER.info("WidgetManager: {} widget(s) registered.", widgets.size());
     }
+
+    // ── Feature gating ────────────────────────────────────────────────────
+
+    /** Called when the player connects to EarthMC. Lifts the render gate. */
+    public void enable()  { this.featuresActive = true; }
+
+    /** Called when the player leaves EarthMC. Drops the render gate without
+     *  touching each widget's user-configured visibility state. */
+    public void disable() { this.featuresActive = false; }
 
     // ── Registration ──────────────────────────────────────────────────────
 
@@ -84,6 +95,8 @@ public class WidgetManager {
     // ── Event handlers ────────────────────────────────────────────────────
 
     private void onHudRender(HudRenderEvent e) {
+        if (!featuresActive) return;
+
         Minecraft mc = Minecraft.getInstance();
 
         if (mc.getDebugOverlay().showDebugScreen()) return;
@@ -115,6 +128,8 @@ public class WidgetManager {
     }
 
     private void onTick(TickEvent e) {
+        if (!featuresActive) return;
+
         for (Widget widget : widgets) widget.tick();
     }
 

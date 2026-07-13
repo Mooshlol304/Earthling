@@ -25,14 +25,21 @@ import org.slf4j.LoggerFactory;
 import xyz.moosh.earthling.client.config.ConfigGroup;
 import xyz.moosh.earthling.client.config.ConfigOption;
 import xyz.moosh.earthling.client.event.EventBus;
+import xyz.moosh.earthling.client.event.impl.ServerChangeEvent;
+import xyz.moosh.earthling.client.event.impl.ServerDisconnectEvent;
 import xyz.moosh.earthling.client.manager.*;
+import xyz.moosh.earthling.client.service.EarthMCService;
 import xyz.moosh.earthling.client.util.MooshLibUtil;
 import xyz.moosh.earthling.client.util.UpdateCheckUtil;
 
 public class EarthlingClient implements ClientModInitializer {
 
     public static final String MOD_ID = "earthling";
-    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static final boolean DEV = false;
+
+    public static final Logger LOGGER = DEV
+            ? LoggerFactory.getLogger(MOD_ID)
+            : org.slf4j.helpers.NOPLogger.NOP_LOGGER;
 
     private static EarthlingClient instance;
 
@@ -42,6 +49,9 @@ public class EarthlingClient implements ClientModInitializer {
     private ModuleManager   moduleManager;
     private WidgetManager   widgetManager;
     private CommandManager  commandManager;
+
+    // Cached so we don't do a lookup on every server event
+    private EarthMCService earthMCService;
 
     private ConfigGroup generalConfig;
     private ConfigOption<String> townlessMessage;
@@ -63,25 +73,23 @@ public class EarthlingClient implements ClientModInitializer {
 
         serviceManager.init();
 
+        // ServiceManager exposes a typed getter — no string lookup needed
+        earthMCService = serviceManager.getEarthMCService();
+
         // ── General Config Setup ──────────────────────────────────────────
 
         generalConfig = new ConfigGroup("general");
         townlessMessage = generalConfig.addText("townlessMessage", "Townless Message",
                 "Hey @username, welcome! Need a head start? We offer free gear, housing and help! Interested? Just type '/t join @town'");
 
-        // CRITICAL FIX: You must register the group to the ConfigManager
-        // Otherwise, it won't be saved to the .json file!
         configManager.register(generalConfig);
 
         // ── Initialize Managers ───────────────────────────────────────────
 
-        // moduleManager.init() and widgetManager.init() also call register()
-        // internally for their specific groups.
         moduleManager.init();
         widgetManager.init();
         commandManager.init();
 
-        serviceManager.init();
         UpdateCheckUtil.init();
 
         // configManager.load() MUST come after all groups have been registered.
@@ -89,20 +97,65 @@ public class EarthlingClient implements ClientModInitializer {
 
         eventBus.init();
 
+        // ── EarthMC Server Guard ──────────────────────────────────────────
+        // Subscribe AFTER EarthMCService (subscribed inside serviceManager.init()),
+        // so isEarthMC() is already updated when our handlers fire.
+
+        eventBus.subscribe(ServerChangeEvent.class,     this::onServerChange);
+        eventBus.subscribe(ServerDisconnectEvent.class, this::onServerDisconnect);
+
+        // Boot state: not on EarthMC yet
+        setFeaturesActive(false);
+
         LOGGER.info("Earthling ready. {} module(s) loaded.", moduleManager.getModules().size());
     }
 
+    // ── EarthMC feature gating ────────────────────────────────────────────
+
+    private void onServerChange(ServerChangeEvent e) {
+        // EarthMCService already updated its connected flag for this event
+        setFeaturesActive(earthMCService.isEarthMC());
+    }
+
+    private void onServerDisconnect(ServerDisconnectEvent e) {
+        setFeaturesActive(false);
+    }
+
+    /**
+     * Enables or disables all Earthling features based on whether the player
+     * is connected to EarthMC.
+     */
+    private void setFeaturesActive(boolean active) {
+        if (active) {
+            LOGGER.info("Connected to EarthMC – enabling Earthling features.");
+            moduleManager.enable();
+            widgetManager.enable();
+        } else {
+            LOGGER.info("Not on EarthMC – disabling Earthling features.");
+            moduleManager.disable();
+            widgetManager.disable();
+        }
+    }
+
+    // ── Convenience ───────────────────────────────────────────────────────
+
+    /** Quick check for modules/utils that need to gate themselves. */
+    public boolean isOnEarthMC() {
+        return earthMCService != null && earthMCService.isEarthMC();
+    }
+
+    // ── Getters ───────────────────────────────────────────────────────────
+
     public static EarthlingClient getInstance() { return instance; }
 
-    public EventBus       getEventBus()       { return eventBus; }
-    public ServiceManager getServiceManager() { return serviceManager; }
-    public ConfigManager  getConfigManager()  { return configManager; }
-    public ModuleManager  getModuleManager()  { return moduleManager; }
-    public WidgetManager  getWidgetManager()  { return widgetManager; }
-    public CommandManager getCommandManager() { return commandManager; }
+    public EventBus        getEventBus()        { return eventBus; }
+    public ServiceManager  getServiceManager()  { return serviceManager; }
+    public ConfigManager   getConfigManager()   { return configManager; }
+    public ModuleManager   getModuleManager()   { return moduleManager; }
+    public WidgetManager   getWidgetManager()   { return widgetManager; }
+    public CommandManager  getCommandManager()  { return commandManager; }
+    public EarthMCService  getEarthMCService()  { return earthMCService; }
 
-    public ConfigGroup getGeneralConfig() { return generalConfig; }
-
-    /** Returns the Townless Invite Message Config Option */
+    public ConfigGroup          getGeneralConfig()   { return generalConfig; }
     public ConfigOption<String> getTownlessMessage() { return townlessMessage; }
 }

@@ -59,7 +59,7 @@ public class EarthlingConfigScreen extends Screen {
         this.clearWidgets();
 
         int cx = width / 2;
-        int listWidth = (int) (width * 0.6);
+        int listWidth = (int) (width * 0.7);
         int leftAlign = cx - (listWidth / 2);
         int toggleX = cx + (listWidth / 2) - 60;
         int currentY = 10;
@@ -135,9 +135,10 @@ public class EarthlingConfigScreen extends Screen {
     }
 
     private void addModuleRow(String label, Module module, int lx, int tx, int y) {
-        Button b = Button.builder(Component.literal(module.isEnabled() ? "§aTRUE" : "§cFALSE"), btn -> {
+        // After
+        Button b = Button.builder(Component.literal(module.isEnabled() ? "§aYES" : "§cNO"), btn -> {
             module.setEnabled(!module.isEnabled());
-            btn.setMessage(Component.literal(module.isEnabled() ? "§aTRUE" : "§cFALSE"));
+            btn.setMessage(Component.literal(module.isEnabled() ? "§aYES" : "§cNO"));
         }).bounds(tx, y, 60, 20).build();
 
         scrollableElements.add(new ScrollableElement(label, lx, y, b));

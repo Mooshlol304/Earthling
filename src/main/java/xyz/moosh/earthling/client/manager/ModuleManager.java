@@ -47,6 +47,13 @@ public class ModuleManager {
     private final Map<Class<? extends Module>, Module>  byType  = new HashMap<>();
     private final Map<String, Module>                   byId    = new LinkedHashMap<>();
 
+    /**
+     * Stores the user's intended enabled state for each module so that
+     * {@link #disable()} can suppress modules at runtime without corrupting
+     * the config values that {@link #enable()} needs to restore from.
+     */
+    private final Map<String, Boolean> enabledSnapshot = new HashMap<>();
+
     public ModuleManager(EventBus eventBus, ConfigManager configManager) {
         this.eventBus      = eventBus;
         this.configManager = configManager;
@@ -101,6 +108,32 @@ public class ModuleManager {
 
     // ── Bulk operations ───────────────────────────────────────────────────
 
+    /**
+     * Snapshot the user's intended enabled state for each module, then
+     * force-disable all of them at runtime. The config values are left
+     * unchanged so {@link #enable()} can restore them correctly.
+     *
+     * Called when the player leaves EarthMC.
+     */
+    public void disable() {
+        // Snapshot BEFORE disabling — setEnabled(false) syncs the ConfigOption,
+        // so reading isEnabled() afterwards would always return false.
+        modules.forEach(m -> enabledSnapshot.put(m.getId(), m.isEnabled()));
+        modules.forEach(m -> m.setEnabled(false));
+    }
+
+    /**
+     * Restore each module to the enabled state it had before {@link #disable()}
+     * was last called.
+     *
+     * Called when the player connects to EarthMC.
+     */
+    public void enable() {
+        modules.forEach(m -> m.setEnabled(enabledSnapshot.getOrDefault(m.getId(), false)));
+        enabledSnapshot.clear();
+    }
+
+    /** Force-disables every module without snapshotting. */
     public void disableAll() {
         modules.forEach(m -> m.setEnabled(false));
     }
