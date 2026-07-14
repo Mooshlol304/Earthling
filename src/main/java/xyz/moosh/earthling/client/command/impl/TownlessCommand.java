@@ -1,25 +1,5 @@
-/*
- * Earthling
- * Copyright (c) 2025 Moosh
- *
- * Earthling is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * Earthling is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with Earthling. If not, see
- * <https://www.gnu.org/licenses/>.
- */
-
 package xyz.moosh.earthling.client.command.impl;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -53,16 +33,7 @@ public class TownlessCommand implements ICommand {
                             Minecraft mc = Minecraft.getInstance();
                             mc.execute(() -> mc.setScreen(new EarthlingConfigScreen(mc.screen)));
                             return 1;
-                        }))
-                .then(ClientCommandManager.literal("invite_internal")
-                        .then(ClientCommandManager.argument("name", StringArgumentType.string())
-                                .then(ClientCommandManager.argument("town", StringArgumentType.string())
-                                        .executes(ctx -> {
-                                            String target = StringArgumentType.getString(ctx, "name");
-                                            String town = StringArgumentType.getString(ctx, "town");
-                                            performInvite(target, town);
-                                            return 1;
-                                        }))));
+                        }));
     }
 
     private void run() {
@@ -96,7 +67,13 @@ public class TownlessCommand implements ICommand {
             String myTown = residents.stream().filter(r -> r.name.equalsIgnoreCase(myName))
                     .map(r -> r.town).findFirst().orElse("NoTown");
 
+            // Fix 1 & 2: Use Java's internal property instead of Minecraft's Util class
+            String chatKey = mc.options.keyChat.getTranslatedKeyMessage().getString().toUpperCase();
+            boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
+            String osPaste = isMac ? "Command+V" : "Ctrl+V";
+
             ChatUtil.sendMessage("§bTownless §8(" + names.size() + "/" + residents.size() + "):");
+            ChatUtil.sendMessage("§7§oClick a name to copy. Press §f[" + chatKey + "]§7 then §f[" + osPaste + "]§7.");
 
             MutableComponent list = Component.empty();
             for (int i = 0; i < names.size(); i++) {
@@ -104,53 +81,33 @@ public class TownlessCommand implements ICommand {
                 if (i < names.size() - 1) list.append(Component.literal("§7, "));
             }
 
-            // HUD Message display for 1.21 Mojmap
             mc.gui.getChat().addMessage(list);
 
-            String current = EarthlingClient.getInstance().getTownlessMessage().get();
-            String defMsg = EarthlingClient.getInstance().getTownlessMessage().getDefaultValue();
+            if (EarthlingClient.getInstance().getTownlessMessage().get().equals(
+                    EarthlingClient.getInstance().getTownlessMessage().getDefaultValue())) {
 
-            if (current.equals(defMsg)) {
-                // Fixed: New Record syntax for 1.21 ClickEvent
-                MutableComponent hint = Component.literal("§8Change The Townless Message at the Config!")
-                        .withStyle(style -> style.withClickEvent(new ClickEvent.RunCommand("/ert townless open_config")));
+                ClickEvent configClick = new ClickEvent.RunCommand("/ert townless open_config");
+                MutableComponent hint = Component.literal("§8[Click to customize your message]")
+                        .withStyle(style -> style.withClickEvent(configClick));
                 mc.gui.getChat().addMessage(hint);
             }
         }));
     }
 
     private MutableComponent createPlayerComponent(String name, String town) {
-        // Fix for 1.21 ClickEvent record
-        ClickEvent click = new ClickEvent.RunCommand("/ert townless invite_internal " + name + " " + town);
+        String rawMsg = EarthlingClient.getInstance().getTownlessMessage().get();
+        String formattedMsg = rawMsg.replace("@username", name).replace("@town", town);
+        String clipboardContent = "/msg " + name + " " + formattedMsg;
 
-        // Fix for 1.21 HoverEvent record (Based on your provided decompile)
-        HoverEvent hover = new HoverEvent.ShowText(Component.literal("§aInvite " + name + " to town"));
+        // Use the Record syntax as verified by your decompile
+        ClickEvent click = new ClickEvent.CopyToClipboard(clipboardContent);
+
+        HoverEvent hover = new HoverEvent.ShowText(
+                Component.literal("§aClick to copy invite message for " + name + "\n§7After clicking, paste it into chat.")
+        );
 
         return Component.literal("§f" + name).withStyle(style -> style
                 .withClickEvent(click)
                 .withHoverEvent(hover));
-    }
-
-    private void performInvite(String target, String town) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-
-        mc.player.connection.sendCommand("t add " + target);
-
-        new Thread(() -> {
-            try {
-                Thread.sleep(500);
-                mc.execute(() -> {
-                    if (mc.player != null) {
-                        String raw = EarthlingClient.getInstance().getTownlessMessage().get();
-                        String formatted = raw.replace("@username", target).replace("@town", town);
-                        mc.player.connection.sendCommand("msg " + target + " " + formatted);
-                    }
-                });
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                EarthlingClient.LOGGER.warn("[TownlessCommand] Invite thread interrupted for {}", target);
-            }
-        }).start();
     }
 }

@@ -37,8 +37,8 @@ import java.util.concurrent.CompletableFuture;
 
 public class UpdateCheckUtil {
 
-    public static final String MOD_VERSION = "1.0.0";
-    public static String updateUrl = "https://github.com/Mooshlol304/Earthling/releases/latest";
+    public static final String MOD_VERSION = "1.0-beta";
+    public static String updateUrl = "https://modrinth.com/mod/earthling#download";
     private static final String JSON_METADATA_URL = "https://raw.githubusercontent.com/Mooshlol304/Earthling/1.21.11/Update.json";
 
     public static void init() {
