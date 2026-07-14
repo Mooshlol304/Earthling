@@ -71,9 +71,10 @@ public class PlayerInfoWidget extends Widget {
         bgColor    = config.addColor("bg_color",    "Background Color", 0xAA000000);
     }
 
-    public void init(EventBus eventBus) {
+    public PlayerInfoWidget init(EventBus eventBus) {
         eventBus.subscribe(ServerChangeEvent.class,     e -> onServerChange());
         eventBus.subscribe(ServerDisconnectEvent.class, e -> clearInfo());
+        return this; // Add this line
     }
 
     // ── IWidget ───────────────────────────────────────────────────────────

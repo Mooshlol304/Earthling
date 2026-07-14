@@ -24,6 +24,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.entity.player.Player;
 import xyz.moosh.earthling.client.config.ConfigOption;
+import xyz.moosh.earthling.client.event.EventBus;
 import xyz.moosh.earthling.client.render.RenderHelper;
 import xyz.moosh.earthling.client.widget.Widget;
 
@@ -61,6 +62,11 @@ public class NearbyPlayersWidget extends Widget {
         headerColor = config.addColor("header_color", "Header Color", 0xFF55FFFF);
         showSelf    = config.addToggle("show_self", "Show Self", false);
         showHeading = config.addToggle("show_heading", "Show Heading", true);
+    }
+
+
+    public NearbyPlayersWidget init(EventBus eventBus) {
+        return this;
     }
 
     @Override

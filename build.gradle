@@ -18,6 +18,7 @@ fabricApi {
 }
 
 repositories {
+    mavenLocal()
     maven {
         name = "Terraformers"
         url = "https://maven.terraformersmc.com/"
@@ -35,8 +36,8 @@ dependencies {
     modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
 
     //Implementation of MooshLib
-    modImplementation(files("libs/moosh-lib.jar"))
-    include(files("libs/moosh-lib.jar"))
+    modImplementation("xyz.moosh:moosh-lib:${project.moosh_lib_version}")
+    include("xyz.moosh:moosh-lib:${project.moosh_lib_version}")
 }
 
 processResources {

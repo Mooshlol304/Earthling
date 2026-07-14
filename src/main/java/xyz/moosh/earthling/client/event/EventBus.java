@@ -23,36 +23,23 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.gui.GuiGraphics;
-import xyz.moosh.earthling.client.EarthlingClient;
 import xyz.moosh.earthling.client.event.impl.*;
-
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-/**
- * Central event bus. Modules and services subscribe to typed events here.
- * Bridges Fabric's event system into Earthling events so the rest of the
- * codebase never imports Fabric event APIs directly.
- *
- * <pre>
- *   eventBus.subscribe(TickEvent.class, e -> doSomething());
- * </pre>
- */
 public class EventBus {
 
-    private final Map<Class<? extends Event>, List<EventListener<? extends Event>>> listeners
-            = new LinkedHashMap<>();
+    private final Map<Class<? extends Event>, List<EventListener<? extends Event>>> listeners = new ConcurrentHashMap<>();
 
-
-
-
-    // ── Subscribe / Unsubscribe ───────────────────────────────────────────
+    public EventBus() {
+        System.out.println("[Earthling] EventBus Initialized.SNAPSHOT enabled.");
+    }
 
     public <T extends Event> EventListener<T> subscribe(Class<T> eventClass, Consumer<T> listener) {
         EventListener<T> wrapped = new EventListener<>(listener);
-        listeners.computeIfAbsent(eventClass, k -> new ArrayList<>()).add(wrapped);
+        listeners.computeIfAbsent(eventClass, k -> new CopyOnWriteArrayList<>()).add(wrapped);
         return wrapped;
     }
 
@@ -61,62 +48,43 @@ public class EventBus {
         if (list != null) list.remove(listener);
     }
 
-    // ── Post ──────────────────────────────────────────────────────────────
-
     @SuppressWarnings("unchecked")
     public <T extends Event> T post(T event) {
-        List<EventListener<? extends Event>> list = listeners.get(event.getClass());
-        if (list == null || list.isEmpty()) return event;
-        for (EventListener<? extends Event> listener : list) {
-            ((EventListener<T>) listener).accept(event);
-            if (event.isCancellable() && event.isCancelled()) break;
+        String eventName = event.getClass().getSimpleName();
+
+        for (Map.Entry<Class<? extends Event>, List<EventListener<? extends Event>>> entry : listeners.entrySet()) {
+            if (entry.getKey().getSimpleName().equals(eventName)) {
+                for (EventListener<? extends Event> listener : entry.getValue()) {
+                    try {
+                        ((EventListener<T>) listener).accept(event);
+                        if (event.isCancellable() && event.isCancelled()) return event;
+                    } catch (Exception ignored) {}
+                }
+            }
         }
         return event;
     }
 
-    // ── Fabric bridge ─────────────────────────────────────────────────────
-
-    /**
-     * Register against Fabric. Must be called after all subscribers are ready.
-     * HudRenderCallback is deprecated in newer Fabric API but is the correct
-     * choice for Fabric API versions bundled with 1.21.1.
-     */
     @SuppressWarnings("deprecation")
     public void init() {
-        ClientTickEvents.END_CLIENT_TICK.register(client ->
-                post(new TickEvent(client)));
+        ClientTickEvents.END_CLIENT_TICK.register(client -> post(new TickEvent(client)));
 
-        HudRenderCallback.EVENT.register(
-                (GuiGraphics guiGraphics, DeltaTracker deltaTracker) ->
-                        post(new HudRenderEvent(guiGraphics,
-                                deltaTracker.getGameTimeDeltaTicks())));
-
-// 1. Intercept Player Chat (Standard chat)
-        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.ALLOW_CHAT.register(
-                (message, signedMessage, sender, params, receptionTimestamp) -> {
-                    ChatReceiveEvent event = post(new ChatReceiveEvent(message, false));
-                    return !event.isCancelled();
-                });
-
-// 2. Intercept Game/System Chat (EarthMC uses this for Global, Nation, etc.)
-        net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents.ALLOW_GAME.register(
-                (message, overlay) -> {
-                    ChatReceiveEvent event = post(new ChatReceiveEvent(message, overlay));
-                    return !event.isCancelled();
-                });
-
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            String address = client.getCurrentServer() != null
-                    ? client.getCurrentServer().ip : "unknown";
-            EarthlingClient.LOGGER.debug("Connected to server: {}", address);
-            post(new ServerChangeEvent(client));
+        // Fabric bridge registration with modern parameter names for 1.21
+        HudRenderCallback.EVENT.register((guiGraphics, deltaTracker) -> {
+            post(new HudRenderEvent(guiGraphics, deltaTracker.getGameTimeDeltaTicks()));
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
-                post(new ServerDisconnectEvent(client)));
-    }
+        ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signed, sender, params, ts) -> {
+            return !post(new ChatReceiveEvent(message, false)).isCancelled();
+        });
 
-    // ── Inner type ────────────────────────────────────────────────────────
+        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
+            return !post(new ChatReceiveEvent(message, overlay)).isCancelled();
+        });
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> post(new ServerChangeEvent(client)));
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> post(new ServerDisconnectEvent(client)));
+    }
 
     public static class EventListener<T extends Event> {
         private final Consumer<T> delegate;

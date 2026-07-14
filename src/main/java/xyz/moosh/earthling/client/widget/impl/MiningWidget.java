@@ -81,9 +81,11 @@ public class MiningWidget extends Widget {
         bgColor     = config.addColor("bg_color",     "Background Color", 0xAA000000);
     }
 
-    public void init(EventBus eventBus) {
+    // Change 'void' to 'MiningWidget'
+    public MiningWidget init(EventBus eventBus) {
         eventBus.subscribe(BlockBreakEvent.class,      this::onBlockBreak);
         eventBus.subscribe(ServerDisconnectEvent.class, e -> resetSession());
+        return this; // Add this line
     }
 
     // ── IWidget ───────────────────────────────────────────────────────────

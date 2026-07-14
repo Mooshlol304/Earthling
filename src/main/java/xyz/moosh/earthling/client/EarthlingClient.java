@@ -35,7 +35,7 @@ import xyz.moosh.earthling.client.util.UpdateCheckUtil;
 public class EarthlingClient implements ClientModInitializer {
 
     public static final String MOD_ID = "earthling";
-    public static final boolean DEV = false;
+    public static final boolean DEV = true;
 
     public static final Logger LOGGER = DEV
             ? LoggerFactory.getLogger(MOD_ID)

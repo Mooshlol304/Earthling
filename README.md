@@ -30,7 +30,7 @@ Whether you're exploring, managing a town, recruiting players, or just chatting,
 | Minecraft | `1.21.11` |
 | Mod Loader | Fabric |
 | Fabric API | Required |
-| ModMenu | `>= 17.0.0-beta.2` |
+| ModMenu | `>= 17.0.0` |
 | MooshLib | Included with Earthling |
 
 ### Installation
