@@ -137,7 +137,10 @@ Licensed under [LGPL-3.0](./LICENSE.txt) — use it, modify it, distribute it.
 
 ## MooshLib
 
-If you'd like to recreate Earthling in a developer environment, here is MooshLib, a required dependency of Earthling. [MooshLib](./LICENSE.txt)
+If you'd like to recreate Earthling in a developer environment, MooshLib, a required dependency of Earthling can be accessed by
+creating a base mod with the modID `moosh-lib` and place it in `/libs`.
+
+_FYI: MooshLib is a library that just counts how many players are using the mod!_
 
 ## Credits
 
