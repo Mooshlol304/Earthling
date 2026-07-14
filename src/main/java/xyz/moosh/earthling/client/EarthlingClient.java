@@ -118,7 +118,12 @@ public class EarthlingClient implements ClientModInitializer {
     }
 
     private void onServerDisconnect(ServerDisconnectEvent e) {
-        setFeaturesActive(false);
+        // ServerChangeEvent for the new server may have already fired and updated
+        // EarthMCService before this disconnect event from the old server arrives.
+        // Only disable if we're genuinely not on EarthMC.
+        if (!earthMCService.isEarthMC()) {
+            setFeaturesActive(false);
+        }
     }
 
     /**

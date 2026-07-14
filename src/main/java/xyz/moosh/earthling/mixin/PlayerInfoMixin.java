@@ -32,8 +32,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import xyz.moosh.earthling.client.EarthlingClient;
 import xyz.moosh.earthling.client.event.impl.RenderNameTagEvent;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
+
 @Mixin(AvatarRenderer.class)
 public abstract class PlayerInfoMixin {
+
+    /**
+     * Guards against duplicate extra-line injection when the rendering pipeline
+     * calls submitNameTag more than once per entity per frame (e.g. shadow pass,
+     * outline pass, main pass). Keys are held weakly so entries are automatically
+     * evicted once the AvatarRenderState object is no longer referenced after the
+     * frame, meaning the next frame always gets a fresh render.
+     */
+    private static final Set<AvatarRenderState> ert$renderedStates =
+            Collections.newSetFromMap(new WeakHashMap<>());
 
     @Inject(method = "submitNameTag", at = @At("TAIL"))
     private void ert$injectNameDisplay(
@@ -44,6 +58,10 @@ public abstract class PlayerInfoMixin {
             CallbackInfo ci) {
 
         if (state.nameTag == null) return;
+
+        // If we've already injected extra lines for this state object this frame,
+        // bail out — we're in a secondary render pass (shadow, outline, etc.)
+        if (!ert$renderedStates.add(state)) return;
 
         RenderNameTagEvent event = new RenderNameTagEvent(state.nameTag.getString());
         EarthlingClient.getInstance().getEventBus().post(event);

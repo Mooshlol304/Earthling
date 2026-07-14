@@ -43,8 +43,9 @@ public class EarthMCService extends Service {
             "earthmc.net"
     );
 
-    private boolean connected = false;
-    private String  currentServer = null;
+    private boolean connected          = false;
+    private boolean receivedServerChange = false;
+    private String  currentServer      = null;
 
     public EarthMCService(EventBus eventBus) {
         super("earthmc", eventBus);
@@ -52,16 +53,18 @@ public class EarthMCService extends Service {
 
     @Override
     public void init() {
-        eventBus.subscribe(ServerChangeEvent.class, this::onServerChange);
+        eventBus.subscribe(ServerChangeEvent.class,     this::onServerChange);
         eventBus.subscribe(ServerDisconnectEvent.class, this::onDisconnect);
     }
 
     // ── Event handlers ────────────────────────────────────────────────────
 
     private void onServerChange(ServerChangeEvent e) {
+        receivedServerChange = true;
+
         String address = e.getAddress();
-        currentServer = address;
-        connected     = address != null && isEarthMCAddress(address);
+        currentServer  = address;
+        connected      = address != null && isEarthMCAddress(address);
 
         if (connected) {
             log("Connected to EarthMC ({})", address);
@@ -69,8 +72,15 @@ public class EarthMCService extends Service {
     }
 
     private void onDisconnect(ServerDisconnectEvent e) {
-        connected     = false;
-        currentServer = null;
+        if (receivedServerChange) {
+            // Trailing disconnect from a server-switch — new connection state is
+            // already set by onServerChange, so just clear the flag and do nothing.
+            receivedServerChange = false;
+        } else {
+            // True disconnect (main menu, timeout, kick, etc.) — fully reset.
+            connected     = false;
+            currentServer = null;
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────
