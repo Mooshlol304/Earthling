@@ -21,8 +21,8 @@ package xyz.moosh.earthling.client.module;
 
 import net.minecraft.network.chat.Component;
 import xyz.moosh.earthling.client.EarthlingClient;
+import xyz.moosh.earthling.client.event.EventBus;
 import xyz.moosh.earthling.client.event.impl.RenderNameTagEvent;
-import xyz.moosh.earthling.client.service.PlayerService;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -32,17 +32,26 @@ public class PlayerAffiliations extends Module {
     // Prevents spamming getPlayer() for a name already in flight
     private final Set<String> pendingRequests = new HashSet<>();
 
+    // subscribe() wraps our Consumer in an EventListener and returns it;
+    // we must hold onto that wrapper since unsubscribe() expects an EventListener
+    private EventBus.EventListener<RenderNameTagEvent> listener;
+
     public PlayerAffiliations() {
         super("player_affiliations", "Player Affiliations", Category.HUD);
     }
 
     @Override
     public void onEnable() {
-        eventBus.subscribe(RenderNameTagEvent.class, this::renderAffiliation);
+        pendingRequests.clear();
+        listener = eventBus.subscribe(RenderNameTagEvent.class, this::renderAffiliation);
     }
 
     @Override
     public void onDisable() {
+        if (listener != null) {
+            eventBus.unsubscribe(RenderNameTagEvent.class, listener);
+            listener = null;
+        }
         pendingRequests.clear();
     }
 

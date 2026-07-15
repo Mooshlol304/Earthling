@@ -32,22 +32,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import xyz.moosh.earthling.client.EarthlingClient;
 import xyz.moosh.earthling.client.event.impl.RenderNameTagEvent;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 @Mixin(AvatarRenderer.class)
 public abstract class PlayerInfoMixin {
 
     /**
-     * Guards against duplicate extra-line injection when the rendering pipeline
-     * calls submitNameTag more than once per entity per frame (e.g. shadow pass,
-     * outline pass, main pass). Keys are held weakly so entries are automatically
-     * evicted once the AvatarRenderState object is no longer referenced after the
-     * frame, meaning the next frame always gets a fresh render.
+     * Fix 1 — per-frame render-pass dedup.
+     *
+     * AvatarRenderState is allocated fresh per submitNameTag call, so identity
+     * keying (WeakHashMap<AvatarRenderState>) is useless — every call looks new.
+     * Instead we key on player name and gate with a nanoTime-based frame boundary.
+     *
+     * 2 ms threshold: multiple render passes for the same entity within a frame
+     * are sequential and complete in microseconds. 2 ms safely separates them
+     * from actual new frames even at 500fps, which no MC instance will reach.
      */
-    private static final Set<AvatarRenderState> ert$renderedStates =
-            Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<String> ert$renderedThisFrame = new HashSet<>();
+    private static long ert$lastFrameNanos = 0L;
+    private static final long FRAME_BOUNDARY_NS = 2_000_000L; // 2 ms
 
     @Inject(method = "submitNameTag", at = @At("TAIL"))
     private void ert$injectNameDisplay(
@@ -59,20 +65,46 @@ public abstract class PlayerInfoMixin {
 
         if (state.nameTag == null) return;
 
-        // If we've already injected extra lines for this state object this frame,
-        // bail out — we're in a secondary render pass (shadow, outline, etc.)
-        if (!ert$renderedStates.add(state)) return;
+        // Roll the per-frame set over when a new frame starts.
+        long now = System.nanoTime();
+        if (now - ert$lastFrameNanos > FRAME_BOUNDARY_NS) {
+            ert$renderedThisFrame.clear();
+            ert$lastFrameNanos = now;
+        }
 
-        RenderNameTagEvent event = new RenderNameTagEvent(state.nameTag.getString());
+        String playerName = state.nameTag.getString();
+
+        // First render pass for this player this frame: proceed and claim the slot.
+        // Any secondary pass (shadows, outlines, etc.) hits the guard and exits.
+        if (!ert$renderedThisFrame.add(playerName)) return;
+
+        RenderNameTagEvent event = new RenderNameTagEvent(playerName);
         EarthlingClient.getInstance().getEventBus().post(event);
 
         if (event.getExtraLines().isEmpty()) return;
+
+        /**
+         * Fix 2 — content-level line dedup.
+         *
+         * If the EventBus listener gets registered more than once (e.g. on server
+         * switch or reinit without a prior unsubscribe), getExtraLines() will
+         * contain duplicate Component instances. Deduplicate by string content
+         * before drawing so a double-registration never causes double lines,
+         * regardless of what happens upstream.
+         */
+        List<Component> lines = new ArrayList<>();
+        Set<String> seenLines = new HashSet<>();
+        for (Component line : event.getExtraLines()) {
+            if (seenLines.add(line.getString())) {
+                lines.add(line);
+            }
+        }
 
         // Draw extra lines above the vanilla name, stacking 0.25 units per line.
         poseStack.pushPose();
         poseStack.translate(0.0D, 0.25D, 0.0D);
 
-        for (Component line : event.getExtraLines()) {
+        for (Component line : lines) {
             collector.submitNameTag(
                     poseStack,
                     state.nameTagAttachment,
