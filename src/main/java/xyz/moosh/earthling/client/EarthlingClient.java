@@ -56,6 +56,11 @@ public class EarthlingClient implements ClientModInitializer {
     private ConfigGroup generalConfig;
     private ConfigOption<String> townlessMessage;
 
+
+    // In EarthlingClient — add this field
+    private boolean featuresActive = false;
+
+
     @Override
     public void onInitializeClient() {
         instance = this;
@@ -105,7 +110,7 @@ public class EarthlingClient implements ClientModInitializer {
         eventBus.subscribe(ServerDisconnectEvent.class, this::onServerDisconnect);
 
         // Boot state: not on EarthMC yet
-        setFeaturesActive(false);
+        featuresActive = false;
 
         LOGGER.info("Earthling ready. {} module(s) loaded.", moduleManager.getModules().size());
     }
@@ -126,11 +131,16 @@ public class EarthlingClient implements ClientModInitializer {
         }
     }
 
+
+
     /**
      * Enables or disables all Earthling features based on whether the player
      * is connected to EarthMC.
      */
     private void setFeaturesActive(boolean active) {
+        if (active == featuresActive) return; // already in this state, nothing to do
+        featuresActive = active;
+
         if (active) {
             LOGGER.info("Connected to EarthMC – enabling Earthling features.");
             moduleManager.enable();
