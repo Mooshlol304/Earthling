@@ -10,7 +10,8 @@
     "ExperienceTextMixin"
   ],
   "client": [
-    "EditBoxMixin"
+    "EditBoxMixin",
+    "ChatSendMixin"
   ],
   "injectors": {
     "defaultRequire": 1

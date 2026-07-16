@@ -19,20 +19,21 @@
 
 package xyz.moosh.earthling.client.module;
 
+import java.util.Optional;
+
 public enum TranslationLanguage {
-    CHINESE("zh-CN", "Chinese (Simplified)"),
-    DUTCH("nl", "Dutch"),
-    ENGLISH_UK("en", "English (UK)"),
-    ENGLISH_US("en", "English (US)"),
-    FRENCH("fr", "French"),
-    GERMAN("de", "German"),
-    ITALIAN("it", "Italian"),
-    JAPANESE("ja", "Japanese"),
-    KOREAN("ko", "Korean"),
-    PORTUGUESE("pt", "Portuguese"),
-    RUSSIAN("ru", "Russian"),
-    SPANISH("es", "Spanish"),
-    TURKISH("tr", "Turkish");
+    CHINESE("zh-CN",   "Chinese (Simplified)"),
+    DUTCH("nl",        "Dutch"),
+    ENGLISH_UK("en",   "English (UK)"),
+    FRENCH("fr",       "French"),
+    GERMAN("de",       "German"),
+    ITALIAN("it",      "Italian"),
+    JAPANESE("ja",     "Japanese"),
+    KOREAN("ko",       "Korean"),
+    PORTUGUESE("pt",   "Portuguese"),
+    RUSSIAN("ru",      "Russian"),
+    SPANISH("es",      "Spanish"),
+    TURKISH("tr",      "Turkish");
 
     private final String code;
     private final String label;
@@ -43,6 +44,25 @@ public enum TranslationLanguage {
     }
 
     public String getCode() { return code; }
+
+    /** The suffix the user types, e.g. {@code --fr} or {@code --zh-cn}. Always lowercase. */
+    public String getSuffix() {
+        return "--" + code.toLowerCase();
+    }
+
+    /**
+     * Looks up a language from user-typed input like {@code "--fr"} or {@code "--ZH-CN"}.
+     * Comparison is case-insensitive.
+     */
+    public static Optional<TranslationLanguage> fromSuffix(String input) {
+        String normalized = input.toLowerCase();
+        for (TranslationLanguage lang : values()) {
+            if (lang.getSuffix().equals(normalized)) {
+                return Optional.of(lang);
+            }
+        }
+        return Optional.empty();
+    }
 
     @Override
     public String toString() { return label; }

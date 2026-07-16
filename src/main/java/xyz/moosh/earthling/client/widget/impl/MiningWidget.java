@@ -61,7 +61,7 @@ public class MiningWidget extends Widget {
     private static final String HINT_TEXT = "/ert miningreset to clear";
 
     /** How many ticks to wait for the drop to arrive before giving up. */
-    private static final int CHECK_TICKS = 8;
+    private static final int CHECK_TICKS = 100;
 
     // Config
     private final ConfigOption<Integer> textColor;

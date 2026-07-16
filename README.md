@@ -70,7 +70,7 @@ All Earthling commands are available through the `/ert` command.
 Widgets are movable HUD elements that stay visible while you play.
 
 - **Nearby Players** – Shows nearby players in real time.
-- **Player Info** – Displays useful information about your character.
+- **Player Info** – Displays useful information about your player
 - **Mining Widget** – Tracks ores mined during your current session.
 
 ---
@@ -80,7 +80,7 @@ Widgets are movable HUD elements that stay visible while you play.
 - **Experience Overlay** – Displays your progress through the current XP level.
 - **Chat Preview** – Shows which EarthMC chat channel your next message will be sent to.
 - **Player Affiliations** – Renders player town and nation tags above their heads.
-- **Translation** – Translate chat messages with a single click.
+- **Translation** – Translate chat messages with a single click. Also add `--languagecode` to the end of a chat message to speak in that language!
 - **Update Reminder** – Lets you know when a newer version of Earthling is available.
 
 ---
